@@ -52,7 +52,7 @@ app.post("/getApi", async function (req, res, next) {
   var apikeys = '';
   var modelGPT = '';
 
-  if(origin == 'chrome-extension://emiglkgggbakjcnonbfkoenefgfaoklh' || origin == 'chrome-extension://nbacjbgboaiiokgccchodfjnniflflaj'){
+  if(origin.includes('chrome-extension://')){
   
     console.log('Yes 1')
 
