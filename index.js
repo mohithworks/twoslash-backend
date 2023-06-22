@@ -5,6 +5,8 @@ var dateDifference = require('date-difference');
 var express = require("express");
 var cors = require("cors");
 const bodyParser = require('body-parser');
+const stripe = require('stripe')("sk_test_51HCbfKFeloY94rjLzdW8R1Pghi6xiboGBGyOy1G9fYCTWw0z308a8YE27UtPehL90tZfCjncdzoKehDlPFpB3Qic00cRxD7GYd");
+
 require("dotenv").config();
 
 // Create a single supabase client for interacting with your database
@@ -74,7 +76,7 @@ app.post("/getApi", async function (req, res, next) {
       if(prompts > 0) {
         console.log('Yes 2')
 
-        var updateData, trialVal, trialDaysOver;
+        var updateData, trialVal, trialDaysOver, userPrompts;
 
         if(status !== null && account_type === 'Subscription') { 
 
@@ -88,14 +90,16 @@ app.post("/getApi", async function (req, res, next) {
 
           if(trial_days_over !== noofDaysOver) { 
             var subVal = noofDaysOver - trial_days_over;
-            trialVal = trial - subVal;
+            var actualTrial = trial - subVal;
+            trialVal = actualTrial < 0 ? 0 : actualTrial;
             trialDaysOver = noofDaysOver;
           }else {
             trialVal = trial;
             trialDaysOver = trial_days_over;
           }
+          userPrompts = trialVal === 0 ? 0 : users[0].prompts - 1;
 
-          updateData = { prompts: users[0].prompts - 1, trial: trialVal, trial_days_over: trialDaysOver }
+          updateData = { prompts: userPrompts, trial: trialVal, trial_days_over: trialDaysOver }
 
         }else if(status !== null && account_type === 'Lifetime') {
           updateData = { prompts: users[0].prompts + 1 }
@@ -296,6 +300,109 @@ app.post("/getPaymentStart", async function (req, res, next) {
   
   }else {
     res.send("Invalid Request");
+  }
+
+});
+
+app.post("/createStripePayment", async function (req, res, next) {
+  console.log(req.headers);
+  console.log(req.query);
+  const userid = req.query.userid;
+  const email = req.query.email;
+  const phoneno = req.query.phone;
+  const accountType = req.query.type;
+
+  var origin = 'POST';
+  try{
+      origin = req.headers.origin;
+  }catch(e){}
+
+  if(origin.includes('chrome-extension://') || origin == 'https://checkout.stripe.com'){
+    var customer, session;
+
+    const { data, error } = await supabase
+    .from('users')
+    .select('stripe_customer_id')
+    .eq('id', userid)
+    
+    if(error) {
+      console.log(error);
+      response = {
+          statusCode: 400,
+          body: {"status":"400", "origin":origin, "error":error},
+      }; 
+    }
+
+    if(data[0].stripe_customer_id === null) {
+      const stripeCustomer = await stripe.customers.create({
+        email: email,
+        phone: phoneno,
+        metadata: {
+          userid: userid,
+        }
+      });
+      customer = stripeCustomer.id;
+    } else {
+      customer = data[0].stripe_customer_id;
+    }
+
+    if(accountType === 'Subscription') { 
+
+      session = await stripe.checkout.sessions.create({
+        success_url: 'https://twoslash.ai/',
+        line_items: [
+          {price: 'price_1NLgV9FeloY94rjLlk0ezM6V', quantity: 1},
+        ],
+        mode: 'subscription',
+        customer: customer,
+      });
+
+    } else {
+
+      session = await stripe.checkout.sessions.create({
+        success_url: 'https://twoslash.ai/',
+        line_items: [
+          {price: 'price_1NLinrFeloY94rjLuaHvsy9T', quantity: 1},
+        ],
+        mode: 'payment',
+        customer: customer,
+      });
+
+    }
+
+    const checkoutUrl = session.url;
+    
+    const updateData = {
+      stripe_pay_session_id: session.id,
+      transEmail: email,
+      transPhone: phoneno,
+      stripe_customer_id: customer,
+    }
+
+    const updateDet = await supabase
+    .from('users')
+    .update(updateData)
+    .eq('id', userid)
+    
+    if(updateDet.error) {
+      console.log(updateDet.error);
+      response = {
+          statusCode: 400,
+          body: {"status":"400", "origin":origin, "error":updateDet.error},
+      }; 
+    }
+    if(updateDet.data) { 
+      console.log(updateDet.data);
+      response = {
+          statusCode: 200,
+          body: {"status":"200", "origin":origin, "data": checkoutUrl},
+      };
+    }
+      
+    res.send(response);
+  
+  }else {
+   res.send("Invalid Request");
   }
 
 });
