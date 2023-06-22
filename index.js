@@ -19,7 +19,7 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(bodyParser.json())
+//app.use(bodyParser.json())
 
 const getDate = () => {
 
@@ -317,7 +317,7 @@ app.post("/createStripePayment", async function (req, res, next) {
       origin = req.headers.origin;
   }catch(e){}
 
-  if(origin.includes('chrome-extension://') || origin == 'https://checkout.stripe.com'){
+  //if(origin.includes('chrome-extension://') || origin == 'https://checkout.stripe.com'){
     var customer, session;
 
     const { data, error } = await supabase
@@ -401,11 +401,122 @@ app.post("/createStripePayment", async function (req, res, next) {
       
     res.send(response);
   
-  }else {
-   res.send("Invalid Request");
-  }
+  //}else {
+  // res.send("Invalid Request");
+ // }
 
 });
+
+const secret = process.env.STRIPE_WEBHOOK_SECRET;
+
+app.post('/stripePayVerify', bodyParser.raw({type: '*/*'}), async (req, res) => {
+	// do a validation
+  const sig = req.headers['stripe-signature'];
+  const body = req.body.toString()
+
+  console.log(req.headers);
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(body, sig, secret);
+  }
+  catch (err) {
+    res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+  console.log(event);
+	if(event.type === 'checkout.session.completed') {
+      console.log(event.data.object);
+      const paymentIntent = event.data.object;
+      console.log('PaymentIntent was successful!');
+
+      const order_id = paymentIntent.id;
+      const customerID = paymentIntent.customer;
+      const amount = paymentIntent.amount_total;
+
+      const customer = await stripe.customers.retrieve(customerID);
+      const { email, phone, metadata } = customer;
+    
+      const userid = metadata.userid;
+
+      console.log(customer);
+      console.log('request is legit')
+  
+      var { date, totalDays } = getDate();
+  
+      console.log(date, totalDays)
+  
+      const transStartData = await supabase
+      .from('users')
+      .select("*")
+      .eq('transEmail', email)
+      .eq('transPhone', phone)
+      .eq('id', userid)
+  
+      if(transStartData.error) { 
+        console.log(transStartData.error)
+      }
+      if(transStartData.data.length > 0) { 
+  
+        console.log('Yes 1')
+  
+        var trial = amount == 900 ? totalDays : 0;
+        var accountType = amount == 900 ? "Subscription" : "Lifetime";
+        var prompts = amount == 900 ? 1000 : 0;
+  
+        console.log('Yes')
+  
+        var updateData = { 
+          prompts: prompts, 
+          orderid: order_id, 
+          status: "Completed",
+          order_date: date,
+          trial: trial,
+          account_type: accountType,
+          trial_days_over: 0,
+        }
+  
+        const { data, error } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('transEmail', email)
+        .eq('transPhone', phone)
+        .eq('id', transStartData.data[0].id)
+  
+        if(error) { 
+          console.log(error)
+        }
+        if(data) {
+          console.log('Yes 2')
+          res.json({ status: 'ok' })
+        }
+  
+      }else {
+        const insertData = [{
+          transEmail: email,
+          transPhone: phone,
+          payid: customerID,
+          orderid: order_id,
+        }]
+        const { data } = await supabase
+          .from('transactions')
+          .insert(insertData).select()
+  
+        // if(error) { 
+        //   res.json({ status: 'Error' })
+        // }
+        if(data) {
+          res.json({ status: 'ok' })
+        }
+  
+      }
+  }else {
+  
+	  res.json({ status: 'Request invalid' })
+
+	}
+})
+
+app.use(bodyParser.json())
 
 app.listen(port, () => console.log(`server started on port ${port}`));
 
