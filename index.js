@@ -102,7 +102,7 @@ app.post("/getApi", async function (req, res, next) {
           updateData = { prompts: userPrompts, trial: trialVal, trial_days_over: trialDaysOver }
 
         }else if(status !== null && account_type === 'Lifetime') {
-          updateData = { prompts: users[0].prompts + 1 }
+          updateData = { prompts: users[0].prompts }
         }else {
           updateData = { prompts: users[0].prompts - 1 }
         }
@@ -201,7 +201,7 @@ app.post('/payVerify', async (req, res) => {
 
       var trial = amount == 2000 ? totalDays : 0;
       var accountType = amount == 2000 ? "Subscription" : "Lifetime";
-      var prompts = amount == 2000 ? 1000 : 0;
+      var prompts = amount == 2000 ? 1000 : 20;
 
       console.log('Yes')
 
