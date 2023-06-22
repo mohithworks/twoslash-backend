@@ -5,7 +5,7 @@ var dateDifference = require('date-difference');
 var express = require("express");
 var cors = require("cors");
 const bodyParser = require('body-parser');
-const stripe = require('stripe')("sk_test_51HCbfKFeloY94rjLzdW8R1Pghi6xiboGBGyOy1G9fYCTWw0z308a8YE27UtPehL90tZfCjncdzoKehDlPFpB3Qic00cRxD7GYd");
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 require("dotenv").config();
 
@@ -70,7 +70,7 @@ app.post("/getApi", async function (req, res, next) {
       }; 
     }
     if(users) { 
-      
+      console.log(users);
       const { prompts, status, order_date, trial, account_type, trial_days_over, api_key, model } = users[0];
 
       if(prompts > 0) {
