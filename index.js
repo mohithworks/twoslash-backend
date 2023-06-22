@@ -94,10 +94,10 @@ app.post("/getApi", async function (req, res, next) {
             trialVal = actualTrial < 0 ? 0 : actualTrial;
             trialDaysOver = noofDaysOver;
           }else {
-            trialVal = trial;
+            trialVal = trial < 0 ? 0 : trial;
             trialDaysOver = trial_days_over;
           }
-          userPrompts = trialVal === 0 ? 0 : users[0].prompts - 1;
+          userPrompts = trialVal <= 0 ? 0 : users[0].prompts - 1;
 
           updateData = { prompts: userPrompts, trial: trialVal, trial_days_over: trialDaysOver }
 
