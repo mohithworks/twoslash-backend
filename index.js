@@ -351,9 +351,9 @@ app.post("/createStripePayment", async function (req, res, next) {
       session = await stripe.checkout.sessions.create({
         success_url: 'https://twoslash.ai/payment-successful/',
         line_items: [
-          {price: 'price_1NLgV9FeloY94rjLlk0ezM6V', quantity: 1},
+          {price: 'price_1NO2cpFeloY94rjLGen0ema5', quantity: 1},
         ],
-        mode: 'subscription',
+        mode: 'payment',
         customer: customer,
       });
 
@@ -362,7 +362,7 @@ app.post("/createStripePayment", async function (req, res, next) {
       session = await stripe.checkout.sessions.create({
         success_url: 'https://twoslash.ai/payment-successful/',
         line_items: [
-          {price: 'price_1NLinrFeloY94rjLuaHvsy9T', quantity: 1},
+          {price: 'price_1NNyjvFeloY94rjLyAIENjGl', quantity: 1},
         ],
         mode: 'payment',
         customer: customer,
