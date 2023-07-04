@@ -343,6 +343,7 @@ app.post("/createStripePayment", async function (req, res, next) {
       });
       customer = stripeCustomer.id;
     } else {
+      console.log(data[0].stripe_customer_id)
       customer = data[0].stripe_customer_id;
     }
 
@@ -351,10 +352,11 @@ app.post("/createStripePayment", async function (req, res, next) {
       session = await stripe.checkout.sessions.create({
         success_url: 'https://twoslash.ai/payment-successful/',
         line_items: [
-          {price: 'price_1NO2cpFeloY94rjLGen0ema5', quantity: 1},
+          {price: process.env.STRIPE_SUBSCRIPTION_PRICE_ID, quantity: 1},
         ],
         mode: 'payment',
         customer: customer,
+        allow_promotion_codes: true,
       });
 
     } else {
@@ -362,10 +364,11 @@ app.post("/createStripePayment", async function (req, res, next) {
       session = await stripe.checkout.sessions.create({
         success_url: 'https://twoslash.ai/payment-successful/',
         line_items: [
-          {price: 'price_1NNyjvFeloY94rjLyAIENjGl', quantity: 1},
+          {price: process.env.STRIPE_LIFETIME_PRICE_ID, quantity: 1},
         ],
         mode: 'payment',
         customer: customer,
+        allow_promotion_codes: true,
       });
 
     }
@@ -434,6 +437,12 @@ app.post('/stripePayVerify', bodyParser.raw({type: '*/*'}), async (req, res) => 
       const amount = paymentIntent.amount_total;
 
       const customer = await stripe.customers.retrieve(customerID);
+      const price = await stripe.checkout.sessions.listLineItems(
+        order_id,
+        { limit: 1 },
+      );
+      const priceId = price.data[0].price.id;
+
       const { email, phone, metadata } = customer;
     
       const userid = metadata.userid;
@@ -459,9 +468,9 @@ app.post('/stripePayVerify', bodyParser.raw({type: '*/*'}), async (req, res) => 
   
         console.log('Yes 1')
   
-        var trial = amount == 900 ? totalDays : 0;
-        var accountType = amount == 900 ? "Subscription" : "Lifetime";
-        var prompts = amount == 900 ? 1000 : 0;
+        var trial = priceId == process.env.STRIPE_SUBSCRIPTION_PRICE_ID ? totalDays : 0;
+        var accountType = priceId == process.env.STRIPE_SUBSCRIPTION_PRICE_ID  ? "Subscription" : "Lifetime";
+        var prompts = priceId == process.env.STRIPE_SUBSCRIPTION_PRICE_ID ? 1000 : 0;
   
         console.log('Yes')
   
@@ -515,6 +524,17 @@ app.post('/stripePayVerify', bodyParser.raw({type: '*/*'}), async (req, res) => 
 
 	}
 })
+
+app.post('/check', async (req, res) => { 
+  const order_id = req.query.order_id;
+  //const checkout_id = req.body.checkout_id;
+  
+  const price = await stripe.checkout.sessions.listLineItems(
+    order_id,
+    { limit: 1 },
+  );
+  res.send(price.data[0].price.id);
+});
 
 app.use(bodyParser.json())
 
