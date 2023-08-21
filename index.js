@@ -429,7 +429,7 @@ app.get("/createeditPayMode", async function (req, res, next) {
 
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
-    success_url: 'https://twoslash.ai/payment-successful/',
+    success_url: process.env.STRIPE_CARD_EDIT_SUCCESS_URL,
     mode: 'setup',
     customer: customerId,
     setup_intent_data: {
@@ -524,7 +524,7 @@ app.post("/createStripePayment", async function (req, res, next) {
 
         session = await stripe.checkout.sessions.create({
           payment_method_types: ['card'],
-          success_url: 'https://twoslash.ai/payment-successful/',
+          success_url: process.env.STRIPE_PAY_SUCCESS_URL,
           line_items: [
             {price: process.env.STRIPE_SUBSCRIPTION_PRICE_ID, quantity: 1},
           ],
@@ -554,7 +554,7 @@ app.post("/createStripePayment", async function (req, res, next) {
     } else {
 
       session = await stripe.checkout.sessions.create({
-        success_url: 'https://twoslash.ai/payment-successful/',
+        success_url: process.env.STRIPE_PAY_SUCCESS_URL,
         line_items: [
           {price: process.env.STRIPE_LIFETIME_PRICE_ID, quantity: 1},
         ],
