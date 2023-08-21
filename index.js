@@ -440,34 +440,17 @@ app.get("/createeditPayMode", async function (req, res, next) {
   });
 
   var response;
-  var origin = 'POST';
-  try{
-      origin = req.headers.origin;
-  }catch(e){
+
+  if(session) {
+    const checkoutUrl = session.url;
+    response = {
+          statusCode: 200,
+          body: {"status":200, "data": checkoutUrl},
+    };
+  }else {
     response = {
           statusCode: 400,
           body: {"status":400, "data": "error"},
-    };
-  }
-
-  if(origin.includes('chrome-extension://') || origin == 'https://checkout.stripe.com'){
-    if(session) {
-      const checkoutUrl = session.url;
-      response = {
-            statusCode: 200,
-            body: {"status":200, "data": checkoutUrl},
-      };
-    }else {
-      response = {
-            statusCode: 400,
-            body: {"status":400, "data": "error"},
-      };
-    }
-  }else {
-  
-    response = {
-      statusCode: 400,
-      body: {"status": 400, "data": "error"},
     };
   }
   res.status(response.statusCode).send(response)
